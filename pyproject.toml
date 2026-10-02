@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "local-research-llm"
+version = "0.1.0"
+description = "SparDA-Style Local Research Model for Forecast-based Sparse Attention and KV Offload"
+readme = "SparDA-Style Local Research Model.md"
+requires-python = ">=3.11"
+dependencies = [
+    "torch>=2.6.0",
+    "tokenizers>=0.21.0",
+    "transformers>=4.48.0",
+    "datasets>=3.2.0",
+    "pyyaml>=6.0",
+    "tqdm>=4.66.0",
+    "numpy>=2.0.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0.0",
+]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
