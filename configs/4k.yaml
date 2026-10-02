@@ -1,0 +1,47 @@
+# 4K Context Configuration for SparDA Local Research Model
+# Context Length: 4,096 tokens
+
+model:
+  vocab_size: 32000
+  n_layer: 12
+  n_embd: 768
+  n_head: 12
+  n_kv_head: 4
+  head_dim: 64
+  ffn_dim: 2048
+  forecast_heads: 4
+  forecast_dim: 64
+  context_length: 4096
+  rope_theta: 25000.0
+  norm_eps: 1.0e-6
+  tie_embeddings: true
+  initializer_range: 0.02
+  attention_backend: "dense"
+  block_size: 32
+  top_k_blocks: 16
+
+training:
+  batch_size: 2
+  gradient_accumulation_steps: 16
+  learning_rate: 4.0e-4
+  min_lr: 4.0e-5
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  max_grad_norm: 1.0
+  warmup_steps: 100
+  max_steps: 1000
+  eval_interval: 100
+  eval_steps: 10
+  save_interval: 200
+  gradient_checkpointing: true
+  mixed_precision: "bf16"
+  device: "cuda"
+  seed: 42
+
+paths:
+  tokenizer_path: "data/tokenizer.json"
+  train_data_path: "data/train.bin"
+  val_data_path: "data/val.bin"
+  checkpoint_dir: "checkpoints/4k"
+  log_dir: "logs/4k"
