@@ -1,0 +1,38 @@
+# Model checkpoints and weights
+*.pt
+*.bin
+*.pth
+*.safetensors
+checkpoints/
+
+# Temporary files
+*.tmp*
+*.temp
+
+# Data raw downloads and logs
+data/raw/
+logs/
+
+# Python & bytecode
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+
+# Environments
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Testing & caches
+.pytest_cache/
+.coverage
+htmlcov/
+
+# IDE & Editor files
+.vscode/
+.idea/
+*.swp
+*.swo
