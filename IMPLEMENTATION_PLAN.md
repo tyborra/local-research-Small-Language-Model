@@ -1,8 +1,8 @@
-# SparDA-Style Local Research Model: Implementation Plan
+# SparDA-Style Local Research Model: Implementation Plan & Session Handoff
 
 ## Goal Description
 
-Build a small language model (~84M parameters) and an experimental modular attention system **from scratch** (initialized from random weights) targeted for local execution on a **16 GB NVIDIA RTX 4090-class GPU**. 
+Build a small language model (~84M parameters) and an experimental modular attention system **from scratch** (initialized from random weights) targeted for local execution on **16 GB NVIDIA RTX-Series GPUs**. 
 
 The system investigates:
 1. **Forecast-based sparse attention** (predicting Layer $L+1$ KV requirements at Layer $L$)
@@ -20,11 +20,17 @@ Following the specification in [SparDA-Style Local Research Model.md](SparDA-Sty
 - **Conda Environment**: `local_slm` (`C:\Users\tybor\miniconda3\envs\local_slm`)
 - **Python Executable**: `C:\Users\tybor\miniconda3\envs\local_slm\python.exe` (Python 3.11.17)
 - **PyTorch**: `2.6.0+cu124` with native CUDA acceleration
-- **GPU**: NVIDIA GeForce RTX 4090 Laptop GPU (16,376 MiB VRAM, compute capability `sm_89` Ada Lovelace)
+- **GPU Target**: 16 GB NVIDIA RTX-Series GPUs *(Testbed: NVIDIA GeForce RTX 4090 Laptop GPU, 16,376 MiB VRAM, compute capability `sm_89` Ada Lovelace)*
 - **BF16 Support**: Native hardware support verified (`torch.cuda.is_bf16_supported() == True`)
 - **Core Dependencies**: `torch`, `torchvision`, `tokenizers`, `transformers`, `datasets`, `pyyaml`, `tqdm`, `pytest`
 - **Execution Command Format**:
   `& "C:\Users\tybor\miniconda3\envs\local_slm\python.exe" <script.py>` or `conda run -n local_slm python <script.py>`
+- **Test Command**:
+  `& "C:\Users\tybor\miniconda3\envs\local_slm\python.exe" -m pytest -v` (12 tests currently passing)
+
+> [!IMPORTANT]
+> **Power Profile Note (Post-Completion Re-evaluation)**:
+> Development and Phase 1 milestone runs were conducted with the testbed laptop operating in **Eco Mode with dGPU** (power capped to ~80W TGP). **Upon full project completion, all latency, throughput, and scaling benchmarks must be re-run in full Performance Mode** (uncapping TGP to 150W–175W with maximum boost clocks and memory bus bandwidth) to establish definitive publication-grade numbers.
 
 ---
 
@@ -38,12 +44,12 @@ Model Configuration:
 ├── n_head:           12 (Query heads)
 ├── n_kv_head:        4  (KV heads, GQA ratio 3:1)
 ├── head_dim:         64
-├── ffn_dim:          2,048 (SwiGLU)
+├── ffn_dim:          2,048 (SwiGLU: w_gate, w_up, w_down)
 ├── forecast_heads:   4
 ├── forecast_dim:     64
 └── context_length:   1,024 (initial; scalable to 2K, 4K, 8K, 16K, 32K)
 
-Total parameters: ~84.3M parameters
+Total parameters: 102,451,968 parameters (24.58M tied embeddings + 77.88M layers + 768 final norm)
 ```
 
 ### Layer Structure & Forecast Data Flow
@@ -78,135 +84,58 @@ graph TD
 
 ---
 
-## Repository Structure
+## Milestone Progress & Status
 
-```
-local-research-LLM/
-├── SparDA-Style Local Research Model.md
-├── IMPLEMENTATION_PLAN.md
-├── pyproject.toml
-├── requirements.txt
-│
-├── configs/
-│   ├── base.yaml
-│   ├── 1k.yaml
-│   ├── 4k.yaml
-│   ├── 8k.yaml
-│   └── 16k.yaml
-│
-├── model/
-│   ├── __init__.py
-│   ├── config.py
-│   ├── embeddings.py
-│   ├── norm.py
-│   ├── rope.py
-│   ├── attention/
-│   │   ├── __init__.py
-│   │   ├── base.py
-│   │   ├── dense.py
-│   │   ├── sparse.py
-│   │   ├── forecast.py
-│   │   ├── offload.py
-│   │   └── async_offload.py
-│   ├── forecast.py
-│   ├── transformer.py
-│   └── model.py
-│
-├── data/
-│   ├── __init__.py
-│   ├── tokenizer.py
-│   ├── dataset.py
-│   ├── packing.py
-│   └── preprocessing.py
-│
-├── training/
-│   ├── __init__.py
-│   ├── trainer.py
-│   ├── losses.py
-│   ├── replay.py
-│   ├── continual.py
-│   └── checkpoint.py
-│
-├── evaluation/
-│   ├── __init__.py
-│   ├── perplexity.py
-│   ├── forecast_metrics.py
-│   ├── latency.py
-│   ├── memory.py
-│   └── forgetting.py
-│
-├── benchmarks/
-│   ├── __init__.py
-│   ├── dense.py
-│   ├── sparse.py
-│   ├── forecast.py
-│   └── long_context.py
-│
-├── scripts/
-│   ├── prepare_data.py
-│   ├── train.py
-│   ├── evaluate.py
-│   ├── generate.py
-│   └── benchmark.py
-│
-├── tests/
-│   ├── __init__.py
-│   ├── test_attention.py
-│   ├── test_forecast.py
-│   ├── test_model.py
-│   └── test_training.py
-│
-└── docs/
-    ├── architecture.md
-    ├── experiments.md
-    └── results.md
-```
+| Phase | Milestone Name | Status | Verified Deliverables / Metrics |
+|:---:|:---|:---:|:---|
+| **Phase 1** | **Base Model & Tokenizer** | **COMPLETE** | Model architecture, Tied embeddings, RoPE, RMSNorm, GQA, SwiGLU, 32K BPE tokenizer, binary dataset cache, 100-step training run on 16 GB RTX-series GPU (3.23 GB VRAM, 12,023 tok/s, loss 9.93 $\to$ 6.20), generation verified, 12/12 unit tests passing. |
+| **Phase 2** | **Production Baseline & Profiling** | **READY TO START** | Comprehensive context scaling (1K, 2K, 4K, 8K), prefill vs. decode latency benchmarks, exact KV-cache VRAM tracking, validation perplexity harness. |
+| **Phase 3** | **Forecast Module** | Planned | Block compressor, Teacher selector, Recall@K, Precision@K, Forecast auxiliary loss. |
+| **Phase 4** | **Sparse Attention Backend** | Planned | Block gather, top-k sparse attention, direct wall-clock comparison vs dense baseline. |
+| **Phase 5** | **KV Offload** | Planned | Pinned CPU memory KV cache, transfer volume and latency profiling. |
+| **Phase 6** | **Async Prefetch** | Planned | Overlapping CPU-GPU transfer stream with Layer $L$ computation. |
+| **Phase 7** | **Continual Learning** | Planned | Multi-stage dataset pipeline, replay buffer (5–20%), forgetting metrics. |
+| **Phase 8** | **Full Scaling Matrix & Final Performance Run** | Planned | 5-way architecture matrix across 1K–32K context lengths; final benchmark sweep executed in **Performance Mode** (unconstrained TGP / boost clocks). |
 
 ---
 
-## Phased Roadmap
+## Next Milestone: Phase 2 Detailed Execution Guide
 
-### Phase 1: Base Model Architecture & Tokenizer (Milestone 1)
-1. **Core Model Modules**:
-   - `model/config.py`: `ModelConfig` dataclass matching specification.
-   - `model/norm.py`: Numerical stable `RMSNorm`.
-   - `model/rope.py`: Rotary Position Embeddings (RoPE).
-   - `model/embeddings.py`: `TiedEmbedding` for shared input and output LM head.
-   - `model/transformer.py`: `SwiGLU` FFN + `TransformerBlock`.
-   - `model/model.py`: Full `SparDAResearchModel` (~84M params).
-2. **Attention Backend**:
-   - `model/attention/base.py`: Pluggable attention base interface.
-   - `model/attention/dense.py`: Dense GQA via PyTorch SDPA with RoPE.
-3. **Tokenizer & Data**:
-   - `data/tokenizer.py`: Trainable Byte-fallback BPE (32K vocab).
-   - `data/dataset.py`: Memory-mapped sequence dataset with packing.
-   - `scripts/prepare_data.py`: Automated download and tokenization of training corpus.
-4. **Phase 1 Verification**:
-   - Parameter count check (~84.3M), tied weight identity, causal masking test.
+**Goal**: Establish the production-quality baseline and profile dense attention across context lengths (1K, 2K, 4K, 8K) before introducing sparse or forecast mechanics.
 
-### Phase 2: Production-Quality Baseline & Profiling
-- BF16 mixed-precision training loop (`training/trainer.py`).
-- Gradient checkpointing & accumulation.
-- Atomic checkpoint saving/loading (`training/checkpoint.py`).
-- Autoregressive generation script (`scripts/generate.py`).
-- Baseline VRAM & tokens/sec profiling (`evaluation/memory.py`, `evaluation/latency.py`).
+### Phase 2 Tasks:
+1. **Perplexity & Validation Evaluation** (`evaluation/perplexity.py`):
+   - Computes validation loss and bits-per-character / perplexity ($PPL = \exp(\text{loss})$) over held-out `data/val.bin`.
+2. **Memory Profiler** (`evaluation/memory.py`):
+   - Measures exact peak VRAM, weights VRAM, activation VRAM, and KV-cache footprint across context lengths.
+3. **Latency Benchmarker** (`evaluation/latency.py` & `benchmarks/dense.py`):
+   - Prefill latency (time to process prompt $T$).
+   - Decode latency (time per generated token with incremental KV caching).
+   - Sustained tokens/sec using synchronized CUDA events (`torch.cuda.Event`).
+4. **Context Scaling Configurations**:
+   - `configs/1k.yaml`, `configs/2k.yaml`, `configs/4k.yaml`, `configs/8k.yaml`.
+5. **Phase 2 Verification Run**:
+   - Execute `benchmarks/dense.py` across 1K, 2K, 4K, and 8K on the 16 GB RTX-series GPU and log the baseline table to `docs/results.md`.
 
-### Phase 3: Forecast Module & Predictive Selection
-- `model/forecast.py`: $W_f \in \mathbb{R}^{d_{model} \times (n_{kv\_head} \times d_{forecast})}$ layer-ahead predictor.
-- KV block representation compressor.
-- Teacher-student loss (`training/losses.py`) and `Recall@K` evaluation (`evaluation/forecast_metrics.py`).
+---
 
-### Phase 4: Sparse Attention Backend
-- `model/attention/sparse.py`: Block-sparse attention with top-$k$ block gather.
-- `model/attention/forecast.py`: Forecast-guided block selection for Layer $L+1$.
-- Benchmark Dense vs. Sparse across context lengths.
+## Key Files Reference
 
-### Phase 5 & 6: KV Offloading & Asynchronous Prefetch
-- Pinned CPU host memory KV cache (`model/attention/offload.py`).
-- Asynchronous prefetch using secondary CUDA stream overlapping with Layer $L$ computation (`model/attention/async_offload.py`).
-- Wall-clock transfer vs. compute benchmarks.
-
-### Phase 7 & 8: Continual Learning & Full Scaling Matrix
-- Experience replay buffer (5–20%) and continual training loop (`training/replay.py`, `training/continual.py`).
-- Context scaling evaluation (1K $\to$ 2K $\to$ 4K $\to$ 8K $\to$ 16K $\to$ 32K).
-- Full 5-experiment matrix execution.
+- **Model Primitives**:
+  - [model/config.py](model/config.py): Architecture hyperparameters (`ModelConfig`).
+  - [model/model.py](model/model.py): Main `SparDAResearchModel` (102.45M params).
+  - [model/embeddings.py](model/embeddings.py): `TiedEmbedding`.
+  - [model/rope.py](model/rope.py): Rotary embeddings.
+  - [model/norm.py](model/norm.py): RMSNorm.
+  - [model/transformer.py](model/transformer.py): SwiGLU & TransformerBlock.
+  - [model/attention/dense.py](model/attention/dense.py): Dense GQA with PyTorch SDPA.
+- **Data & Training**:
+  - [data/tokenizer.py](data/tokenizer.py): Custom 32K Byte-fallback BPE tokenizer.
+  - [training/trainer.py](training/trainer.py): BF16 training loop.
+  - [training/checkpoint.py](training/checkpoint.py): Atomic checkpoint saving/loading.
+  - [scripts/train.py](scripts/train.py): Training CLI entrypoint.
+  - [scripts/generate.py](scripts/generate.py): Autoregressive generation script.
+  - [checkpoints/base/model_step_100.pt](checkpoints/base/model_step_100.pt): Validated step 100 model checkpoint.
+- **Documentation**:
+  - [SparDA-Style Local Research Model.md](SparDA-Style%20Local%20Research%20Model.md): Core research specification.
+  - [docs/phase1_walkthrough.md](docs/phase1_walkthrough.md): Phase 1 completion report.

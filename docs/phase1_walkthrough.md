@@ -6,7 +6,7 @@ Milestone 1 from [SparDA-Style Local Research Model.md](../SparDA-Style%20Local%
 - Custom 32,000 Byte-fallback BPE tokenizer trained from raw text.
 - Dataset preparation pipeline with uint16 binary sequence caching.
 - Full Transformer architecture built: Tied Embeddings, RMSNorm, RoPE, GQA (12 Q heads, 4 KV heads), SwiGLU FFN, Forecast projection hook.
-- Production BF16 training loop verified on local NVIDIA GeForce RTX 4090 Laptop GPU (16 GB).
+- Production BF16 training loop verified on a 16 GB NVIDIA RTX-Series GPU (Testbed: RTX 4090 Laptop GPU, 16 GB).
 - Model trained for 100 steps: loss decreased monotonically from 9.93 to 6.20.
 - Checkpoints saved atomically.
 - Autoregressive text generation verified from checkpoint.
@@ -18,8 +18,9 @@ Milestone 1 from [SparDA-Style Local Research Model.md](../SparDA-Style%20Local%
 - **Conda Environment**: `local_slm` (`C:\Users\tybor\miniconda3\envs\local_slm`)
 - **Python**: `3.11.17`
 - **PyTorch**: `2.6.0+cu124`
-- **GPU**: NVIDIA GeForce RTX 4090 Laptop GPU (16,376 MiB VRAM)
+- **GPU Target**: 16 GB NVIDIA RTX-Series GPUs *(Testbed: NVIDIA GeForce RTX 4090 Laptop GPU, 16,376 MiB VRAM)*
 - **Compute Capability**: `(8, 9)` (Ada Lovelace, native BF16 supported)
+- **Power Profile (Eco Mode note)**: Development and Phase 1 runs were executed with the laptop in **Eco Mode with dGPU** (~80W TGP). All benchmark evaluations will be re-run in full **Performance Mode** (150W–175W TGP) upon project completion.
 
 ---
 
