@@ -1,4 +1,4 @@
-# SparDA: Predictive Sparse Attention & Long-Context Research Model
+# SparDA: Local Predictive Sparse Attention & Long-Context Research Model
 
 [![PyTorch 2.6+](https://img.shields.io/badge/PyTorch-2.6%2Bcu124-EE4C2C.svg?style=flat&logo=pytorch)](https://pytorch.org)
 [![CUDA 12.4](https://img.shields.io/badge/CUDA-12.4-76B900.svg?style=flat&logo=nvidia)](https://developer.nvidia.com/cuda-zone)
