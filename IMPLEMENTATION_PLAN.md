@@ -89,8 +89,8 @@ graph TD
 | Phase | Milestone Name | Status | Verified Deliverables / Metrics |
 |:---:|:---|:---:|:---|
 | **Phase 1** | **Base Model & Tokenizer** | **COMPLETE** | Model architecture, Tied embeddings, RoPE, RMSNorm, GQA, SwiGLU, 32K BPE tokenizer, binary dataset cache, 100-step training run on 16 GB RTX-series GPU (3.23 GB VRAM, 12,023 tok/s, loss 9.93 $\to$ 6.20), generation verified, 12/12 unit tests passing. |
-| **Phase 2** | **Production Baseline & Profiling** | **READY TO START** | Comprehensive context scaling (1K, 2K, 4K, 8K), prefill vs. decode latency benchmarks, exact KV-cache VRAM tracking, validation perplexity harness. |
-| **Phase 3** | **Forecast Module** | Planned | Block compressor, Teacher selector, Recall@K, Precision@K, Forecast auxiliary loss. |
+| **Phase 2** | **Production Baseline & Profiling** | **COMPLETE** | Context scaling suite (1K to 16K), prefill vs decode CUDA-event latency benchmarking, analytical & real VRAM tracking (192.88 MB KV at 16K), validation perplexity harness (loss 5.8189 nats, PPL 336.59, 39,066 tok/s), 17/17 unit tests passing, `docs/results.md` logged. |
+| **Phase 3** | **Forecast Module & Selection** | **READY TO START** | Block compressor, Teacher selector (dense attention weights to top-k block targets), Recall@K & Precision@K metrics, Forecast auxiliary loss. |
 | **Phase 4** | **Sparse Attention Backend** | Planned | Block gather, top-k sparse attention, direct wall-clock comparison vs dense baseline. |
 | **Phase 5** | **KV Offload** | Planned | Pinned CPU memory KV cache, transfer volume and latency profiling. |
 | **Phase 6** | **Async Prefetch** | Planned | Overlapping CPU-GPU transfer stream with Layer $L$ computation. |
@@ -99,23 +99,21 @@ graph TD
 
 ---
 
-## Next Milestone: Phase 2 Detailed Execution Guide
+## Next Milestone: Phase 3 Detailed Execution Guide
 
-**Goal**: Establish the production-quality baseline and profile dense attention across context lengths (1K, 2K, 4K, 8K) before introducing sparse or forecast mechanics.
+**Goal**: Implement the Forecast mechanics, block selector, teacher selector, forecast loss, and evaluation metrics (Recall@K, Precision@K) according to Sections 5, 6, 9, and 10 of [SparDA-Style Local Research Model.md](SparDA-Style%20Local%20Research%20Model.md).
 
-### Phase 2 Tasks:
-1. **Perplexity & Validation Evaluation** (`evaluation/perplexity.py`):
-   - Computes validation loss and bits-per-character / perplexity ($PPL = \exp(\text{loss})$) over held-out `data/val.bin`.
-2. **Memory Profiler** (`evaluation/memory.py`):
-   - Measures exact peak VRAM, weights VRAM, activation VRAM, and KV-cache footprint across context lengths.
-3. **Latency Benchmarker** (`evaluation/latency.py` & `benchmarks/dense.py`):
-   - Prefill latency (time to process prompt $T$).
-   - Decode latency (time per generated token with incremental KV caching).
-   - Sustained tokens/sec using synchronized CUDA events (`torch.cuda.Event`).
-4. **Context Scaling Configurations**:
-   - `configs/1k.yaml`, `configs/2k.yaml`, `configs/4k.yaml`, `configs/8k.yaml`.
-5. **Phase 2 Verification Run**:
-   - Execute `benchmarks/dense.py` across 1K, 2K, 4K, and 8K on the 16 GB RTX-series GPU and log the baseline table to `docs/results.md`.
+### Phase 3 Tasks:
+1. **Forecast Projection & KV Block Compressor** ([model/forecast.py](model/forecast.py)):
+   - `ForecastProjection`: $W_f \in \mathbb{R}^{d_{\text{embd}} \times (n_{\text{kv\_head}} \cdot d_{\text{forecast}})}$ projecting hidden states $x_L$ to predict layer $L+1$.
+   - `KVBlockCompressor`: compresses key representations into block prototypes (e.g., mean pooling over block dimension).
+2. **Teacher Selector & Block Scoring**:
+   - Computes teacher block importance from dense attention weights (mean attention weight per block).
+   - Forecast block scoring: inner product between forecast query vector and compressed block representations.
+3. **Forecast Loss & Metrics** (`evaluation/forecast_metrics.py`):
+   - Computes Top-K Recall@K, Precision@K, and KL divergence / BCE loss between forecast predictions and teacher targets.
+4. **Unit Tests for Phase 3** (`tests/test_forecast.py`):
+   - Verify forecast shapes, block scoring, teacher target generation, and recall/precision metrics.
 
 ---
 
