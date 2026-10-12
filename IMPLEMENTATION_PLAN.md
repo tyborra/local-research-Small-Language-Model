@@ -90,8 +90,8 @@ graph TD
 |:---:|:---|:---:|:---|
 | **Phase 1** | **Base Model & Tokenizer** | **COMPLETE** | Model architecture, Tied embeddings, RoPE, RMSNorm, GQA, SwiGLU, 32K BPE tokenizer, binary dataset cache, 100-step training run on 16 GB RTX-series GPU (3.23 GB VRAM, 12,023 tok/s, loss 9.93 $\to$ 6.20), generation verified, 12/12 unit tests passing. |
 | **Phase 2** | **Production Baseline & Profiling** | **COMPLETE** | Context scaling suite (1K to 16K), prefill vs decode CUDA-event latency benchmarking, analytical & real VRAM tracking (192.88 MB KV at 16K), validation perplexity harness (loss 5.8189 nats, PPL 336.59, 39,066 tok/s), 17/17 unit tests passing, `docs/results.md` logged. |
-| **Phase 3** | **Forecast Module & Selection** | **READY TO START** | Block compressor, Teacher selector (dense attention weights to top-k block targets), Recall@K & Precision@K metrics, Forecast auxiliary loss. |
-| **Phase 4** | **Sparse Attention Backend** | Planned | Block gather, top-k sparse attention, direct wall-clock comparison vs dense baseline. |
+| **Phase 3** | **Forecast Module & Selection** | **COMPLETE** | `ForecastProjection`, `KVBlockCompressor`, `ForecastBlockSelector`, `TeacherBlockSelector`, `compute_forecast_loss` (KL & BCE), Recall@K & Precision@K metrics, empirical 11-layer evaluation (`scripts/benchmark_forecast.py`), 23/23 unit tests passing. |
+| **Phase 4** | **Sparse Attention Backend** | **READY TO START** | Block gather module, Top-K sparse GQA attention (`model/attention/sparse.py`), direct wall-clock speed/latency/VRAM comparison vs dense baseline. |
 | **Phase 5** | **KV Offload** | Planned | Pinned CPU memory KV cache, transfer volume and latency profiling. |
 | **Phase 6** | **Async Prefetch** | Planned | Overlapping CPU-GPU transfer stream with Layer $L$ computation. |
 | **Phase 7** | **Continual Learning** | Planned | Multi-stage dataset pipeline, replay buffer (5–20%), forgetting metrics. |
@@ -99,21 +99,24 @@ graph TD
 
 ---
 
-## Next Milestone: Phase 3 Detailed Execution Guide
+## Next Milestone: Phase 4 Detailed Execution Guide
 
-**Goal**: Implement the Forecast mechanics, block selector, teacher selector, forecast loss, and evaluation metrics (Recall@K, Precision@K) according to Sections 5, 6, 9, and 10 of [SparDA-Style Local Research Model.md](SparDA-Style%20Local%20Research%20Model.md).
+**Goal**: Build the interchangeable **Sparse Attention Backend** (`model/attention/sparse.py`) according to Section 7, 9, and 13 of [SparDA-Style Local Research Model.md](SparDA-Style%20Local%20Research%20Model.md).
 
-### Phase 3 Tasks:
-1. **Forecast Projection & KV Block Compressor** ([model/forecast.py](model/forecast.py)):
-   - `ForecastProjection`: $W_f \in \mathbb{R}^{d_{\text{embd}} \times (n_{\text{kv\_head}} \cdot d_{\text{forecast}})}$ projecting hidden states $x_L$ to predict layer $L+1$.
-   - `KVBlockCompressor`: compresses key representations into block prototypes (e.g., mean pooling over block dimension).
-2. **Teacher Selector & Block Scoring**:
-   - Computes teacher block importance from dense attention weights (mean attention weight per block).
-   - Forecast block scoring: inner product between forecast query vector and compressed block representations.
-3. **Forecast Loss & Metrics** (`evaluation/forecast_metrics.py`):
-   - Computes Top-K Recall@K, Precision@K, and KL divergence / BCE loss between forecast predictions and teacher targets.
-4. **Unit Tests for Phase 3** (`tests/test_forecast.py`):
-   - Verify forecast shapes, block scoring, teacher target generation, and recall/precision metrics.
+### Phase 4 Tasks:
+1. **Sparse Attention Module** (`model/attention/sparse.py`):
+   - Implements `BaseAttention`.
+   - Uses `ForecastBlockSelector` or `TeacherBlockSelector` to obtain top-K block indices.
+   - Gathers selected $K$ and $V$ blocks: $[B, n_{\text{kv\_head}}, K \cdot \text{block\_size}, \text{head\_dim}]$.
+   - Executes attention over selected blocks (with local causal block always preserved).
+2. **Backend Interchangeability**:
+   - Update `model/transformer.py` factory `build_attention_backend` to support `attention_backend="sparse"`.
+3. **Sparse vs. Dense Wall-Clock Benchmark** (`benchmarks/sparse.py`):
+   - Profiles wall-clock prefill latency, decode latency, tokens/sec, and peak VRAM across 1K, 2K, 4K, 8K, 16K.
+   - Rigorously validates Section 13: measures actual wall-clock acceleration rather than theoretical FLOP reductions.
+4. **Unit Tests** (`tests/test_sparse_attention.py`):
+   - Output shapes, causality preservation, gradient backpropagation, KV cache decoding.
+
 
 ---
 

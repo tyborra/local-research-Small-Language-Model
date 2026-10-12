@@ -1,6 +1,7 @@
 """Dense Grouped-Query Attention (GQA) implementation with PyTorch SDPA."""
 
-from typing import Optional
+import math
+from typing import Optional, Tuple, Union
 import torch
 import torch.nn.functional as F
 from model.attention.base import BaseAttention, KVCache
@@ -22,7 +23,7 @@ class DenseAttention(BaseAttention):
         mask: Optional[torch.Tensor] = None,
         is_causal: bool = True,
         **kwargs,
-    ) -> torch.Tensor:
+    ) -> Union[torch.Tensor, Tuple[torch.Tensor, torch.Tensor]]:
         batch_size, seq_len, _ = x.shape
 
         # Projections: [B, T, H, D]
@@ -38,7 +39,7 @@ class DenseAttention(BaseAttention):
         if kv_cache is not None:
             xk, xv = kv_cache.update(xk, xv)
 
-        # Transpose to [B, H, T, D] for SDPA
+        # Transpose to [B, H, T, D] for attention computation
         # xq: [B, n_head, T_q, head_dim]
         # xk: [B, n_kv_head, T_k, head_dim]
         # xv: [B, n_kv_head, T_k, head_dim]
@@ -51,19 +52,40 @@ class DenseAttention(BaseAttention):
             xk = torch.repeat_interleave(xk, repeats=self.num_queries_per_kv, dim=1)
             xv = torch.repeat_interleave(xv, repeats=self.num_queries_per_kv, dim=1)
 
-        # Use PyTorch's hardware-accelerated SDPA (FlashAttention-2 / CuDNN / math)
-        # If cache_offset > 0, we only generate 1 token at a time, so is_causal should be False if mask is not used
         causal_flag = is_causal if (seq_len > 1 and mask is None) else False
-        
-        output = F.scaled_dot_product_attention(
-            query=xq,
-            key=xk,
-            value=xv,
-            attn_mask=mask,
-            dropout_p=0.0,
-            is_causal=causal_flag
-        )
+        return_attn_weights = kwargs.get("return_attn_weights", False)
+
+        if return_attn_weights:
+            scale = 1.0 / math.sqrt(self.head_dim)
+            scores = torch.matmul(xq, xk.transpose(-1, -2)) * scale
+            if causal_flag:
+                t_k = xk.size(2)
+                causal_mask = torch.triu(
+                    torch.full((seq_len, t_k), float("-inf"), device=x.device, dtype=scores.dtype),
+                    diagonal=1 + cache_offset,
+                )
+                scores = scores + causal_mask
+            if mask is not None:
+                scores = scores + mask
+            attn_weights = F.softmax(scores, dim=-1, dtype=torch.float32).to(x.dtype)
+            output = torch.matmul(attn_weights, xv)
+        else:
+            # Use PyTorch's hardware-accelerated SDPA (FlashAttention-2 / CuDNN / math)
+            output = F.scaled_dot_product_attention(
+                query=xq,
+                key=xk,
+                value=xv,
+                attn_mask=mask,
+                dropout_p=0.0,
+                is_causal=causal_flag,
+            )
+            attn_weights = None
 
         # Reshape back to [B, T, n_head * head_dim]
         output = output.transpose(1, 2).contiguous().view(batch_size, seq_len, self.n_head * self.head_dim)
-        return self.wo(output)
+        proj_out = self.wo(output)
+
+        if return_attn_weights:
+            return proj_out, attn_weights
+        return proj_out
+
