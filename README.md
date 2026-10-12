@@ -11,19 +11,19 @@
 
 ---
 
-## 📌 Executive Summary (LinkedIn Project Highlight)
+## 🔬 Overview & Motivation
 
-Standard Transformer inference is memory-bandwidth bound during autoregressive decoding. As context lengths scale from 1K to 32K+ tokens, the Key-Value (KV) cache grows linearly, rapidly exhausting accelerator VRAM. While static sparse attention reduces theoretical FLOPs, dynamic sparse attention frequently degrades wall-clock speed due to irregular GPU memory gather patterns, non-contiguous indexing, and kernel launch overhead.
+Autoregressive inference in Transformer language models is fundamentally memory-bandwidth bound. As sequence lengths scale from 1K towards 32K+ tokens, Key-Value (KV) cache memory footprints grow linearly with context length and batch size, rapidly exhausting accelerator High-Bandwidth Memory (HBM/VRAM). While static sparse attention mechanisms (such as fixed sliding windows or strided patterns) reduce theoretical computational FLOPs, dynamic content-dependent sparse attention frequently underperforms in wall-clock latency due to irregular memory access patterns, non-contiguous indexing, and GPU kernel launch overhead.
 
-**SparDA (Sparse Dynamic Attention)** addresses this fundamental bottleneck by investigating whether a Transformer layer ($L$) can emit a lightweight **one-layer-ahead Forecast vector** that predicts which KV blocks the subsequent layer ($L+1$) will require. Crucially, on memory-constrained systems (such as 16 GB consumer/workstation GPUs), this prediction enables the engine to **asynchronously stream required KV blocks from host CPU memory to GPU buffers** concurrently with layer computation, overlapping and hiding PCIe transfer latency.
+**SparDA (Sparse Dynamic Attention)** explores a predictive architectural alternative: enabling each Transformer layer ($L$) to project a lightweight **one-layer-ahead Forecast representation** that anticipates the specific KV memory blocks required by the subsequent layer ($L+1$). On memory-constrained accelerators (such as commodity 16 GB GPUs), this predictive routing establishes the foundation for **asynchronous CPU↔GPU KV prefetching**—streaming targeted KV blocks across the PCIe bus concurrently with feed-forward network computation to effectively overlap data transfer and execution latencies.
 
-### Key Engineering Achievements:
-- 🚀 **Pretrained 100% from Scratch**: Built strictly from random Gaussian weights (no pretrained checkpoints like Llama, Qwen, or Mistral used at any stage).
-- 🧩 **Complete Custom Transformer Architecture**: 102.45M parameter model featuring Tied Input/Output Embeddings, Rotary Position Embeddings (RoPE), RMSNorm with FP32 stability, Grouped-Query Attention (GQA 3:1, 12 Q heads, 4 KV heads), and SwiGLU feed-forward networks.
-- ⚡ **Production BF16 Pipeline**: PyTorch SDPA hardware acceleration (FlashAttention-2 / CuDNN), mixed-precision training loop, gradient checkpointing, and atomic checkpointing.
-- 📈 **Empirically Profiled Context Scaling**: Evaluated from **1K to 16K context lengths** with synchronized CUDA events—demonstrating sustained prefill speeds up to **40,800 tokens/sec** and an ultra-compact **192 MB KV-cache footprint** at 16,384 tokens.
-- 🔮 **Predictive Forecast Module (Phase 3 Complete)**: Implemented KV block compression, scaled dot-product block routing, teacher extraction from dense GQA attention maps, and auxiliary forecast loss. Empirically demonstrated **~58.5% Recall@8** across all 11 layer transitions.
-- 🧪 **Enterprise-Grade Test Suite**: **23/23 unit tests** covering attention math, RoPE, KV caching, dataset packing, memory profiling, latency benchmarks, and forecast mechanics.
+### Key Technical Contributions & Milestones:
+- **Pretrained from First Principles**: Designed, initialized, and trained entirely from scratch using random Gaussian initialization, strictly independent of existing pretrained model families (e.g., Llama, Qwen, Mistral).
+- **Custom Modern Transformer Architecture**: 102.45M parameter model incorporating tied input/output embeddings, Rotary Position Embeddings (RoPE), FP32-stabilized RMSNorm, Grouped-Query Attention (GQA 3:1 ratio with 12 Query heads and 4 KV heads), and SwiGLU activation.
+- **Hardware-Accelerated BF16 Infrastructure**: Integrated native PyTorch SDPA (FlashAttention-2 / CuDNN kernels), mixed-precision forward/backward passes, gradient checkpointing, and transactional atomic checkpoint management.
+- **Empirically Benchmarked Context Scaling (1K–16K)**: Rigorous profiling using CUDA event synchronization demonstrating prefill throughput scaling up to **40,818 tok/s** and an ultra-lean **192.88 MB KV-cache footprint** at 16,384 tokens (leaving **14.23 GB of VRAM headroom** on a 16 GB device).
+- **Predictive Forecast Module (Phase 3 Verified)**: Production implementation of KV block compression, scaled dot-product block routing, teacher extraction from full dense attention distributions, and auxiliary supervision losses. Real-world evaluation confirms **~58.5% Recall@8** and **~37.5% Recall@4** across all 11 layer transitions.
+- **Comprehensive Verification Suite**: **23/23 unit tests passing** covering attention mechanics, RoPE expansion, KV cache decoding, sequence packing, memory telemetry, and forecast routing.
 
 ---
 
