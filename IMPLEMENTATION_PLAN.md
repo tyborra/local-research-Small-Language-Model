@@ -92,31 +92,31 @@ graph TD
 | **Phase 2** | **Production Baseline & Profiling** | **COMPLETE** | Context scaling suite (1K to 16K), prefill vs decode CUDA-event latency benchmarking, analytical & real VRAM tracking (192.88 MB KV at 16K), validation perplexity harness (loss 5.8189 nats, PPL 336.59, 39,066 tok/s), 17/17 unit tests passing, `docs/results.md` logged. |
 | **Phase 3** | **Forecast Module & Selection** | **COMPLETE** | `ForecastProjection`, `KVBlockCompressor`, `ForecastBlockSelector`, `TeacherBlockSelector`, `compute_forecast_loss` (KL & BCE), Recall@K & Precision@K metrics, empirical 11-layer evaluation (`scripts/benchmark_forecast.py`), 23/23 unit tests passing. |
 | **Phase 4** | **Sparse Attention Backend** | **COMPLETE** | `gather_kv_blocks`, `SparseAttention` (`model/attention/sparse.py`) with physical block gather, sink & local causal preservation, full model integration in `build_attention_backend`, 28/28 unit tests passing, comparative wall-clock benchmark (`benchmarks/sparse.py`) executed and logged to `docs/results.md`. |
-| **Phase 5** | **KV Offload** | **READY TO START** | Pinned CPU memory KV cache, selected-block CPU-GPU transfer, transfer volume and latency profiling. |
-| **Phase 6** | **Async Prefetch** | Planned | Overlapping CPU-GPU transfer stream with Layer $L$ computation. |
+| **Phase 5** | **KV Offload** | **COMPLETE** | `OffloadedKVCache` in pinned CPU memory (`pin_memory`), `ForecastOffloadAttention` (`model/attention/offload.py`), 21.3x GPU KV VRAM reduction at 4K, 31/31 unit tests passing, PCIe transfer & latency breakdown benchmark (`benchmarks/offload.py`) logged to `docs/results.md`. |
+| **Phase 6** | **Async Prefetch** | **READY TO START** | Dedicated CUDA transfer stream overlapping CPU $\to$ GPU PCIe transfer of Layer $L+1$ KV blocks with Layer $L$ compute. |
 | **Phase 7** | **Continual Learning** | Planned | Multi-stage dataset pipeline, replay buffer (5–20%), forgetting metrics. |
 | **Phase 8** | **Full Scaling Matrix & Final Performance Run** | Planned | 5-way architecture matrix across 1K–32K context lengths; final benchmark sweep executed in **Performance Mode** (unconstrained TGP / boost clocks). |
 
 ---
 
-## Next Milestone: Phase 5 Detailed Execution Guide
+## Next Milestone: Phase 6 Detailed Execution Guide
 
-**Goal**: Implement **KV Cache Offloading** between CPU and GPU (`model/attention/offload.py`) according to Section 11 of [SparDA-Style Local Research Model.md](SparDA-Style%20Local%20Research%20Model.md).
+**Goal**: Implement **Asynchronous KV Prefetching** overlapping CPU $\to$ GPU transfer with GPU computation (`model/attention/async_offload.py`) according to Section 12 of [SparDA-Style Local Research Model.md](SparDA-Style%20Local%20Research%20Model.md).
 
-### Phase 5 Tasks:
-1. **Pinned CPU KV Cache Storage**:
-   - Maintain the authoritative full KV cache in host CPU pinned (`torch.Tensor.pin_memory()`) memory.
-   - GPU cache holds only currently active/selected blocks ($K_{\text{selected}}$ blocks).
-2. **Selective Block Transfer**:
-   - At each layer (or decode step), transfer only the forecast-selected blocks from CPU to GPU via non-blocking or stream-synchronized transfers.
-3. **KV Offload Attention Backend (`model/attention/offload.py`)**:
-   - Implements `BaseAttention`.
-   - Wires CPU-to-GPU block transfer into attention execution.
-4. **Transfer Volume & Latency Profiling (`benchmarks/offload.py`)**:
-   - Quantify PCIe transfer volume (MB transferred per token/step).
-   - Measure transfer latency vs. compute latency.
-5. **Unit Tests (`tests/test_offload.py`)**:
-   - Verify correctness of CPU-GPU KV cache round-trips, block indexing, and decoding.
+### Phase 6 Tasks:
+1. **Asynchronous Transfer Stream**:
+   - Create a dedicated CUDA Stream (`torch.cuda.Stream()`) for concurrent DMA transfers.
+2. **Forecast Lookahead Pipeline**:
+   - At Layer $L$, Forecast projection produces $F_L$ for Layer $L+1$.
+   - Queue non-blocking PCIe DMA transfer of selected Layer $L+1$ KV blocks on the background transfer stream immediately.
+   - Concurrently execute Layer $L$ GQA attention and SwiGLU FFN on the primary compute stream.
+3. **Async Offload Attention Backend (`model/attention/async_offload.py`)**:
+   - Implements `BaseAttention` and integrates stream event synchronization (`torch.cuda.Event`).
+4. **Async Prefetch Benchmark (`benchmarks/async_prefetch.py`)**:
+   - Measure transfer/compute overlap percentage and latency hiding.
+5. **Unit Tests (`tests/test_async_offload.py`)**:
+   - Verify stream synchronization, causality, and numerical parity with synchronous offload.
+
 
 
 

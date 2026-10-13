@@ -21,3 +21,15 @@
 
 > [!NOTE]
 > **Section 13 Wall-Clock Analysis**: In compliance with the Critical Performance Principle, theoretical FLOP reductions only convert into wall-clock speedup when memory access patterns and gather overhead do not exceed the cost of dense GEMM operations. Autoregressive decoding with physical block gathering bounds the attended KV cache to Top-K + Sink + Local blocks, providing substantial scaling headroom and enabling CPU offloading (Phase 5).
+
+
+### KV Cache CPU-GPU Offloading Benchmark (RTX-Series 16GB GPU)
+
+| Context | Dense GPU KV | Offload GPU KV | VRAM Reduction | PCIe Transfer/Step | Selection Latency | Transfer Latency | Attention Latency | Total Decode Latency |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **1K (1024)** | 12.00 MB | 2.25 MB | **5.3x** | 2,112.0 KB | 35.37 ms | 41.40 ms | 23.50 ms | **162.62 ms** (6.1 tok/s) |
+| **2K (2048)** | 24.00 MB | 2.25 MB | **10.7x** | 2,112.0 KB | 35.51 ms | 42.22 ms | 23.35 ms | **163.84 ms** (6.1 tok/s) |
+| **4K (4096)** | 48.00 MB | 2.25 MB | **21.3x** | 2,112.0 KB | 36.10 ms | 45.76 ms | 24.25 ms | **169.43 ms** (5.9 tok/s) |
+
+> [!NOTE]
+> **Phase 5 KV Offloading Verification**: Maintains the authoritative full KV cache in Host CPU pinned RAM (`pin_memory`). Only Top-K + Sink + Local blocks are streamed over PCIe on demand, bounding GPU KV footprint to a constant size and unlocking long-context execution without GPU VRAM exhaustion.

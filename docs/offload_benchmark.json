@@ -1,0 +1,46 @@
+{
+  "device": "cuda",
+  "dtype": "torch.bfloat16",
+  "batch_size": 1,
+  "n_layer": 12,
+  "block_size": 32,
+  "top_k_blocks": 4,
+  "benchmarks": [
+    {
+      "context_length": 1024,
+      "dense_gpu_kv_mb": 12.0,
+      "offload_gpu_kv_mb": 2.25,
+      "vram_reduction_ratio": 5.333333333333333,
+      "transfer_kb_per_step": 2112.0,
+      "selection_latency_ms": 35.37383124950111,
+      "transfer_latency_ms": 41.39943750004704,
+      "attention_latency_ms": 23.495393750408766,
+      "total_decode_step_ms": 162.6212937498508,
+      "decode_tok_per_sec": 6.149256207112899
+    },
+    {
+      "context_length": 2048,
+      "dense_gpu_kv_mb": 24.0,
+      "offload_gpu_kv_mb": 2.25,
+      "vram_reduction_ratio": 10.666666666666666,
+      "transfer_kb_per_step": 2112.0,
+      "selection_latency_ms": 35.510012500481025,
+      "transfer_latency_ms": 42.21866250003359,
+      "attention_latency_ms": 23.350556249909005,
+      "total_decode_step_ms": 163.84266250003066,
+      "decode_tok_per_sec": 6.103416440756466
+    },
+    {
+      "context_length": 4096,
+      "dense_gpu_kv_mb": 48.0,
+      "offload_gpu_kv_mb": 2.25,
+      "vram_reduction_ratio": 21.333333333333332,
+      "transfer_kb_per_step": 2112.0,
+      "selection_latency_ms": 36.096481249956014,
+      "transfer_latency_ms": 45.7588999997256,
+      "attention_latency_ms": 24.247856250440236,
+      "total_decode_step_ms": 169.430093749952,
+      "decode_tok_per_sec": 5.902139211914845
+    }
+  ]
+}

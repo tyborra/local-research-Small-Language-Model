@@ -11,6 +11,7 @@ from model.forecast import ForecastProjection
 from model.attention.base import BaseAttention, KVCache
 from model.attention.dense import DenseAttention
 from model.attention.sparse import SparseAttention
+from model.attention.offload import ForecastOffloadAttention
 
 
 class SwiGLU(nn.Module):
@@ -36,11 +37,14 @@ def build_attention_backend(config: ModelConfig, layer_idx: int) -> BaseAttentio
         return DenseAttention(config, layer_idx)
     elif backend == "sparse":
         return SparseAttention(config, layer_idx)
-    elif backend in ("forecast", "offload", "async_offload"):
+    elif backend in ("offload", "forecast_offload"):
+        return ForecastOffloadAttention(config, layer_idx)
+    elif backend in ("forecast", "async_offload"):
         # Placeholders for future phases will be hooked here
         return DenseAttention(config, layer_idx)
     else:
         raise ValueError(f"Unknown attention backend: {config.attention_backend}")
+
 
 
 
