@@ -1,0 +1,61 @@
+{
+  "device": "cuda",
+  "dtype": "torch.bfloat16",
+  "batch_size": 1,
+  "comparisons": [
+    {
+      "context_length": 1024,
+      "batch_size": 1,
+      "dense_prefill_ms": 70.47997436523437,
+      "dense_prefill_tok_per_sec": 14528.949665809017,
+      "dense_decode_ms_per_token": 50.85938034057617,
+      "dense_decode_tok_per_sec": 19.66205630708774,
+      "dense_peak_vram_gb": 1.0498332977294922,
+      "dense_kv_cache_mb": 12.0,
+      "sparse_prefill_ms": 82.07687606811524,
+      "sparse_prefill_tok_per_sec": 12476.108363946343,
+      "sparse_decode_ms_per_token": 88.05319671630859,
+      "sparse_decode_tok_per_sec": 11.356771103061918,
+      "sparse_peak_vram_gb": 1.0589885711669922,
+      "sparse_kv_cache_mb": 12.0,
+      "prefill_speedup": 0.8587068336609613,
+      "decode_speedup": 0.5775983409714909
+    },
+    {
+      "context_length": 2048,
+      "batch_size": 1,
+      "dense_prefill_ms": 51.3269760131836,
+      "dense_prefill_tok_per_sec": 39901.045397140886,
+      "dense_decode_ms_per_token": 53.69260864257812,
+      "dense_decode_tok_per_sec": 18.624537441583758,
+      "dense_peak_vram_gb": 1.118875503540039,
+      "dense_kv_cache_mb": 24.0,
+      "sparse_prefill_ms": 79.39481582641602,
+      "sparse_prefill_tok_per_sec": 25795.135093928828,
+      "sparse_decode_ms_per_token": 92.17889404296875,
+      "sparse_decode_tok_per_sec": 10.848470361706172,
+      "sparse_peak_vram_gb": 1.119363784790039,
+      "sparse_kv_cache_mb": 24.0,
+      "prefill_speedup": 0.6464776758900954,
+      "decode_speedup": 0.5824826735016974
+    },
+    {
+      "context_length": 4096,
+      "batch_size": 1,
+      "dense_prefill_ms": 73.63655700683594,
+      "dense_prefill_tok_per_sec": 55624.54528692527,
+      "dense_decode_ms_per_token": 51.885824584960936,
+      "dense_decode_tok_per_sec": 19.273086782354987,
+      "dense_peak_vram_gb": 1.2642765045166016,
+      "dense_kv_cache_mb": 48.0,
+      "sparse_prefill_ms": 169.43257598876954,
+      "sparse_prefill_tok_per_sec": 24174.808038517305,
+      "sparse_decode_ms_per_token": 82.08191986083985,
+      "sparse_decode_tok_per_sec": 12.182950906793863,
+      "sparse_peak_vram_gb": 1.6186466217041016,
+      "sparse_kv_cache_mb": 48.0,
+      "prefill_speedup": 0.43460684332460825,
+      "decode_speedup": 0.6321224536770972
+    }
+  ]
+}

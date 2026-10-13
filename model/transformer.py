@@ -10,6 +10,7 @@ from model.rope import RotaryEmbedding
 from model.forecast import ForecastProjection
 from model.attention.base import BaseAttention, KVCache
 from model.attention.dense import DenseAttention
+from model.attention.sparse import SparseAttention
 
 
 class SwiGLU(nn.Module):
@@ -33,11 +34,14 @@ def build_attention_backend(config: ModelConfig, layer_idx: int) -> BaseAttentio
     backend = config.attention_backend.lower()
     if backend == "dense":
         return DenseAttention(config, layer_idx)
-    elif backend in ("sparse", "forecast", "offload", "async_offload"):
+    elif backend == "sparse":
+        return SparseAttention(config, layer_idx)
+    elif backend in ("forecast", "offload", "async_offload"):
         # Placeholders for future phases will be hooked here
         return DenseAttention(config, layer_idx)
     else:
         raise ValueError(f"Unknown attention backend: {config.attention_backend}")
+
 
 
 class TransformerBlock(nn.Module):

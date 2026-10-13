@@ -91,31 +91,33 @@ graph TD
 | **Phase 1** | **Base Model & Tokenizer** | **COMPLETE** | Model architecture, Tied embeddings, RoPE, RMSNorm, GQA, SwiGLU, 32K BPE tokenizer, binary dataset cache, 100-step training run on 16 GB RTX-series GPU (3.23 GB VRAM, 12,023 tok/s, loss 9.93 $\to$ 6.20), generation verified, 12/12 unit tests passing. |
 | **Phase 2** | **Production Baseline & Profiling** | **COMPLETE** | Context scaling suite (1K to 16K), prefill vs decode CUDA-event latency benchmarking, analytical & real VRAM tracking (192.88 MB KV at 16K), validation perplexity harness (loss 5.8189 nats, PPL 336.59, 39,066 tok/s), 17/17 unit tests passing, `docs/results.md` logged. |
 | **Phase 3** | **Forecast Module & Selection** | **COMPLETE** | `ForecastProjection`, `KVBlockCompressor`, `ForecastBlockSelector`, `TeacherBlockSelector`, `compute_forecast_loss` (KL & BCE), Recall@K & Precision@K metrics, empirical 11-layer evaluation (`scripts/benchmark_forecast.py`), 23/23 unit tests passing. |
-| **Phase 4** | **Sparse Attention Backend** | **READY TO START** | Block gather module, Top-K sparse GQA attention (`model/attention/sparse.py`), direct wall-clock speed/latency/VRAM comparison vs dense baseline. |
-| **Phase 5** | **KV Offload** | Planned | Pinned CPU memory KV cache, transfer volume and latency profiling. |
+| **Phase 4** | **Sparse Attention Backend** | **COMPLETE** | `gather_kv_blocks`, `SparseAttention` (`model/attention/sparse.py`) with physical block gather, sink & local causal preservation, full model integration in `build_attention_backend`, 28/28 unit tests passing, comparative wall-clock benchmark (`benchmarks/sparse.py`) executed and logged to `docs/results.md`. |
+| **Phase 5** | **KV Offload** | **READY TO START** | Pinned CPU memory KV cache, selected-block CPU-GPU transfer, transfer volume and latency profiling. |
 | **Phase 6** | **Async Prefetch** | Planned | Overlapping CPU-GPU transfer stream with Layer $L$ computation. |
 | **Phase 7** | **Continual Learning** | Planned | Multi-stage dataset pipeline, replay buffer (5–20%), forgetting metrics. |
 | **Phase 8** | **Full Scaling Matrix & Final Performance Run** | Planned | 5-way architecture matrix across 1K–32K context lengths; final benchmark sweep executed in **Performance Mode** (unconstrained TGP / boost clocks). |
 
 ---
 
-## Next Milestone: Phase 4 Detailed Execution Guide
+## Next Milestone: Phase 5 Detailed Execution Guide
 
-**Goal**: Build the interchangeable **Sparse Attention Backend** (`model/attention/sparse.py`) according to Section 7, 9, and 13 of [SparDA-Style Local Research Model.md](SparDA-Style%20Local%20Research%20Model.md).
+**Goal**: Implement **KV Cache Offloading** between CPU and GPU (`model/attention/offload.py`) according to Section 11 of [SparDA-Style Local Research Model.md](SparDA-Style%20Local%20Research%20Model.md).
 
-### Phase 4 Tasks:
-1. **Sparse Attention Module** (`model/attention/sparse.py`):
+### Phase 5 Tasks:
+1. **Pinned CPU KV Cache Storage**:
+   - Maintain the authoritative full KV cache in host CPU pinned (`torch.Tensor.pin_memory()`) memory.
+   - GPU cache holds only currently active/selected blocks ($K_{\text{selected}}$ blocks).
+2. **Selective Block Transfer**:
+   - At each layer (or decode step), transfer only the forecast-selected blocks from CPU to GPU via non-blocking or stream-synchronized transfers.
+3. **KV Offload Attention Backend (`model/attention/offload.py`)**:
    - Implements `BaseAttention`.
-   - Uses `ForecastBlockSelector` or `TeacherBlockSelector` to obtain top-K block indices.
-   - Gathers selected $K$ and $V$ blocks: $[B, n_{\text{kv\_head}}, K \cdot \text{block\_size}, \text{head\_dim}]$.
-   - Executes attention over selected blocks (with local causal block always preserved).
-2. **Backend Interchangeability**:
-   - Update `model/transformer.py` factory `build_attention_backend` to support `attention_backend="sparse"`.
-3. **Sparse vs. Dense Wall-Clock Benchmark** (`benchmarks/sparse.py`):
-   - Profiles wall-clock prefill latency, decode latency, tokens/sec, and peak VRAM across 1K, 2K, 4K, 8K, 16K.
-   - Rigorously validates Section 13: measures actual wall-clock acceleration rather than theoretical FLOP reductions.
-4. **Unit Tests** (`tests/test_sparse_attention.py`):
-   - Output shapes, causality preservation, gradient backpropagation, KV cache decoding.
+   - Wires CPU-to-GPU block transfer into attention execution.
+4. **Transfer Volume & Latency Profiling (`benchmarks/offload.py`)**:
+   - Quantify PCIe transfer volume (MB transferred per token/step).
+   - Measure transfer latency vs. compute latency.
+5. **Unit Tests (`tests/test_offload.py`)**:
+   - Verify correctness of CPU-GPU KV cache round-trips, block indexing, and decoding.
+
 
 
 ---
