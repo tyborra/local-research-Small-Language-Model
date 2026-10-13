@@ -7,7 +7,13 @@ name = "local-research-llm"
 version = "0.1.0"
 description = "SparDA-Style Local Research Model for Forecast-based Sparse Attention and KV Offload"
 readme = "SparDA-Style Local Research Model.md"
+license = { text = "AGPL-3.0-or-later" }
+classifiers = [
+    "License :: OSI Approved :: GNU Affero General Public License v3 or later (AGPLv3+)",
+    "Programming Language :: Python :: 3.11",
+]
 requires-python = ">=3.11"
+
 dependencies = [
     "torch>=2.6.0",
     "tokenizers>=0.21.0",
