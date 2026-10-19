@@ -102,6 +102,8 @@ class SparDAResearchModel(nn.Module):
 
         for i, layer in enumerate(self.layers):
             kv_cache = kv_caches[i] if kv_caches is not None else None
+            next_layer = self.layers[i + 1] if i + 1 < len(self.layers) else None
+            next_cache = kv_caches[i + 1] if (kv_caches is not None and i + 1 < len(kv_caches)) else None
 
             if self.gradient_checkpointing and self.training and kv_cache is None:
                 # Custom forward wrapper for gradient checkpointing
@@ -128,6 +130,8 @@ class SparDAResearchModel(nn.Module):
                     mask=None,
                     is_causal=True,
                     prev_layer_forecast=prev_forecast,
+                    next_layer_block=next_layer,
+                    next_kv_cache=next_cache,
                 )
 
             if return_forecasts:

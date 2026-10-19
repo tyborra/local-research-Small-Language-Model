@@ -12,6 +12,7 @@ from model.attention.base import BaseAttention, KVCache
 from model.attention.dense import DenseAttention
 from model.attention.sparse import SparseAttention
 from model.attention.offload import ForecastOffloadAttention
+from model.attention.async_offload import AsyncForecastOffloadAttention
 
 
 class SwiGLU(nn.Module):
@@ -39,7 +40,9 @@ def build_attention_backend(config: ModelConfig, layer_idx: int) -> BaseAttentio
         return SparseAttention(config, layer_idx)
     elif backend in ("offload", "forecast_offload"):
         return ForecastOffloadAttention(config, layer_idx)
-    elif backend in ("forecast", "async_offload"):
+    elif backend in ("async", "async_offload", "async_prefetch"):
+        return AsyncForecastOffloadAttention(config, layer_idx)
+    elif backend in ("forecast",):
         # Placeholders for future phases will be hooked here
         return DenseAttention(config, layer_idx)
     else:
@@ -76,6 +79,8 @@ class TransformerBlock(nn.Module):
         mask: Optional[torch.Tensor] = None,
         is_causal: bool = True,
         prev_layer_forecast: Optional[torch.Tensor] = None,
+        next_layer_block: Optional['TransformerBlock'] = None,
+        next_kv_cache: Optional[KVCache] = None,
     ) -> Tuple[torch.Tensor, torch.Tensor]:
         """Forward pass through the transformer block.
         
@@ -86,6 +91,8 @@ class TransformerBlock(nn.Module):
             mask: Optional attention mask
             is_causal: Whether to apply causal mask
             prev_layer_forecast: Forecast vector emitted by layer L-1
+            next_layer_block: Optional reference to layer L+1 for asynchronous prefetching
+            next_kv_cache: Optional KV cache for layer L+1
             
         Returns:
             x: Updated hidden states [batch, seq_len, n_embd]
@@ -97,7 +104,15 @@ class TransformerBlock(nn.Module):
         # 2. Compute forecast for the next layer (L+1)
         current_forecast = self.forecast(normed_x)
         
-        # 3. Compute attention using backend
+        # 3. Queue asynchronous prefetch for next layer if supported
+        if next_layer_block is not None and next_kv_cache is not None:
+            if hasattr(next_layer_block.attention, "prefetch"):
+                next_layer_block.attention.prefetch(
+                    forecast_vector=current_forecast,
+                    offload_cache=next_kv_cache,
+                )
+
+        # 4. Compute attention using backend on primary compute stream
         attn_out = self.attention(
             normed_x,
             rotary_emb=rotary_emb,
@@ -108,7 +123,7 @@ class TransformerBlock(nn.Module):
         )
         x = x + attn_out
         
-        # 4. Normalize & SwiGLU FFN with residual connection
+        # 5. Normalize & SwiGLU FFN with residual connection
         x = x + self.ffn(self.ffn_norm(x))
         
         return x, current_forecast

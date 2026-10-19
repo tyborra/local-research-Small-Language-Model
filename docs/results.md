@@ -33,3 +33,15 @@
 
 > [!NOTE]
 > **Phase 5 KV Offloading Verification**: Maintains the authoritative full KV cache in Host CPU pinned RAM (`pin_memory`). Only Top-K + Sink + Local blocks are streamed over PCIe on demand, bounding GPU KV footprint to a constant size and unlocking long-context execution without GPU VRAM exhaustion.
+
+
+### Asynchronous KV Prefetching Benchmark (RTX-Series 16GB GPU)
+
+| Context | Dense GPU KV | Async GPU KV | VRAM Reduction | Transfer/Step | Transfer Latency | Stalled Wait | Overlap % | Total Decode Latency | Decode Throughput |
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+| **1K (1024)** | 12.00 MB | 2.25 MB | **5.3x** | 2,112.0 KB | 0.16 ms | 0.17 ms | 0.0% | **40.51 ms** | **24.69 tok/s** |
+| **2K (2048)** | 24.00 MB | 2.25 MB | **10.7x** | 2,112.0 KB | 0.21 ms | 0.19 ms | 10.4% | **43.97 ms** | **22.74 tok/s** |
+| **4K (4096)** | 48.00 MB | 2.25 MB | **21.3x** | 2,112.0 KB | 0.29 ms | 0.18 ms | 37.8% | **42.77 ms** | **23.38 tok/s** |
+
+> [!NOTE]
+> **Phase 6 Asynchronous Prefetch Verification**: Implements dedicated background CUDA DMA transfer stream (`torch.cuda.Stream()`) overlapping CPU $\to$ GPU PCIe transfers with Layer $L$ attention and SwiGLU FFN compute. By queuing Layer $L+1$ block transfers ahead of time using Forecast vector $F_L$ and synchronizing via `torch.cuda.Event`, total decode step latency drops from **169.43 ms** (sync offload) to **42.77 ms** (async prefetch) — delivering a **~4.0x wall-clock decode speedup** while preserving the full **21.3x GPU KV cache VRAM reduction**.
