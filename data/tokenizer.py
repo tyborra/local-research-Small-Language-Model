@@ -31,6 +31,11 @@ class SparDATokenizer:
             self.tokenizer.decoder = ByteLevelDecoder()
 
     @classmethod
+    def from_file(cls, tokenizer_file: Union[str, Path]) -> "SparDATokenizer":
+        """Loads a trained SparDATokenizer from a JSON file."""
+        return cls(tokenizer_file=tokenizer_file)
+
+    @classmethod
     def train_from_iterator(
         cls,
         iterator,

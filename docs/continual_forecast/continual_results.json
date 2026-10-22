@@ -1,0 +1,67 @@
+{
+  "replay_and_ewc": {
+    "metrics_loss": {
+      "backward_transfer": 0.9055377497817529,
+      "average_forgetting": 0.0,
+      "max_forgetting": 0.0
+    },
+    "metrics_ppl": {
+      "backward_transfer": 159.58336779132446,
+      "average_forgetting": 0.0,
+      "max_forgetting": 0.0
+    },
+    "trajectory": [
+      {
+        "1": {
+          "eval_loss": 5.835113525390625,
+          "perplexity": 342.10356928717715,
+          "bits_per_token": 8.41828934610517
+        },
+        "2": {
+          "eval_loss": 7.3832651774088545,
+          "perplexity": 1608.8343304697098,
+          "bits_per_token": 10.651800057015928
+        },
+        "3": {
+          "eval_loss": 7.123178482055664,
+          "perplexity": 1240.3867213774258,
+          "bits_per_token": 10.27657427142868
+        }
+      },
+      {
+        "1": {
+          "eval_loss": 5.081007523970171,
+          "perplexity": 160.9361212723868,
+          "bits_per_token": 7.330344357551277
+        },
+        "2": {
+          "eval_loss": 5.512156895228794,
+          "perplexity": 247.6847814658109,
+          "bits_per_token": 7.952361417348487
+        },
+        "3": {
+          "eval_loss": 6.373584270477295,
+          "perplexity": 586.1550063047654,
+          "bits_per_token": 9.195138419705495
+        }
+      },
+      {
+        "1": {
+          "eval_loss": 4.227577556263316,
+          "perplexity": 68.55097000684268,
+          "bits_per_token": 6.09910517539457
+        },
+        "2": {
+          "eval_loss": 5.308617364792597,
+          "perplexity": 202.07064516349644,
+          "bits_per_token": 7.658715946163317
+        },
+        "3": {
+          "eval_loss": 5.0586020946502686,
+          "perplexity": 157.37037360272416,
+          "bits_per_token": 7.298020155782465
+        }
+      }
+    ]
+  }
+}

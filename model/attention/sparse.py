@@ -71,10 +71,19 @@ class SparseAttention(BaseAttention):
     3. Sequence prefill with chunked block gather (profiling physical block gather overhead).
     """
 
-    def __init__(self, config: ModelConfig, layer_idx: int):
+    def __init__(self, config: ModelConfig, layer_idx: int, mode: Optional[str] = None):
         super().__init__(config, layer_idx)
         self.block_size = config.block_size
         self.top_k_blocks = config.top_k_blocks
+        
+        if mode is not None:
+            self.mode = mode
+        elif config.attention_backend in ("static_sparse", "static"):
+            self.mode = "static"
+        elif getattr(config, "sparse_mode", "forecast") == "static":
+            self.mode = "static"
+        else:
+            self.mode = "forecast"
         
         # Compressor and selector modules
         self.compressor = KVBlockCompressor(
@@ -102,7 +111,7 @@ class SparseAttention(BaseAttention):
 
         # If total blocks are small enough, attend densely without dropping blocks
         max_sel_blocks = min(num_blocks, self.top_k_blocks + 2)
-        if num_blocks <= max_sel_blocks or forecast_vector is None:
+        if num_blocks <= max_sel_blocks:
             # Fall back to dense decode over accumulated cache
             xk_dense = xk[:, :, :seq_len_k, :]
             xv_dense = xv[:, :, :seq_len_k, :]
@@ -113,23 +122,29 @@ class SparseAttention(BaseAttention):
             out = out.transpose(1, 2).contiguous().view(batch_size, 1, self.n_head * self.head_dim)
             return self.wo(out)
 
-        # 1. Compress keys into block representations: [B, num_blocks, n_kv_head, forecast_dim]
-        xk_for_comp = xk.transpose(1, 2)  # [B, seq_len_k, n_kv_head, head_dim]
-        block_reps = self.compressor(xk_for_comp)
-
-        # 2. Score blocks with forecast vector from layer L-1
-        # forecast_vector: [B, 1, n_kv_head, forecast_dim]
-        _, topk = self.selector(forecast_vector, block_reps, top_k=self.top_k_blocks, is_causal=True)
-        topk_indices = topk[:, :, 0, :]  # [B, n_kv_head, top_k]
-
-        # 3. Combine: Sink block (0) + Top-K blocks + Local current block (curr_block)
+        # 1. Selection mask across blocks
         selected_mask = torch.zeros((batch_size, n_kv_head, num_blocks), dtype=torch.bool, device=xk.device)
         sink_idx = torch.zeros((batch_size, n_kv_head, 1), dtype=torch.long, device=xk.device)
         curr_idx = torch.full((batch_size, n_kv_head, 1), curr_block, dtype=torch.long, device=xk.device)
-        
         selected_mask.scatter_(dim=-1, index=sink_idx, value=True)
         selected_mask.scatter_(dim=-1, index=curr_idx, value=True)
-        selected_mask.scatter_(dim=-1, index=topk_indices.clamp(0, num_blocks - 1), value=True)
+
+        if self.mode == "forecast" and forecast_vector is not None:
+            # Compress keys into block representations: [B, num_blocks, n_kv_head, forecast_dim]
+            xk_for_comp = xk.transpose(1, 2)  # [B, seq_len_k, n_kv_head, head_dim]
+            block_reps = self.compressor(xk_for_comp)
+
+            # Score blocks with forecast vector from layer L-1
+            # forecast_vector: [B, 1, n_kv_head, forecast_dim]
+            _, topk = self.selector(forecast_vector, block_reps, top_k=self.top_k_blocks, is_causal=True)
+            topk_indices = topk[:, :, 0, :]  # [B, n_kv_head, top_k]
+            selected_mask.scatter_(dim=-1, index=topk_indices.clamp(0, num_blocks - 1), value=True)
+        else:
+            # Static mode / no forecast: select local window blocks ending at curr_block
+            local_start = max(0, curr_block - self.top_k_blocks + 1)
+            for b in range(local_start, curr_block + 1):
+                idx = torch.full((batch_size, n_kv_head, 1), b, dtype=torch.long, device=xk.device)
+                selected_mask.scatter_(dim=-1, index=idx, value=True)
 
         # Mask future blocks if any
         future_mask = torch.arange(num_blocks, device=xk.device) > curr_block
@@ -182,8 +197,8 @@ class SparseAttention(BaseAttention):
         batch_size = xq.shape[0]
         num_blocks = (seq_len + self.block_size - 1) // self.block_size
 
-        # If context is within local/sink range, or forecast is absent, execute dense attention
-        if num_blocks <= 2 or forecast_vector is None or self.layer_idx == 0:
+        # If context is within local/sink range, execute dense attention
+        if num_blocks <= 2 or (self.mode == "forecast" and (forecast_vector is None or self.layer_idx == 0)):
             if self.num_queries_per_kv > 1:
                 xk = torch.repeat_interleave(xk, repeats=self.num_queries_per_kv, dim=1)
                 xv = torch.repeat_interleave(xv, repeats=self.num_queries_per_kv, dim=1)
@@ -208,29 +223,32 @@ class SparseAttention(BaseAttention):
             out = out.transpose(1, 2).contiguous().view(batch_size, seq_len, self.n_head * self.head_dim)
             return self.wo(out)
 
-        # 1. Compress keys into block representations
-        xk_for_comp = xk.transpose(1, 2)  # [B, T, n_kv_head, head_dim]
-        block_reps = self.compressor(xk_for_comp)
-
-        # 2. Select Top-K blocks using forecast vector
-        _, topk = self.selector(forecast_vector, block_reps, top_k=self.top_k_blocks, is_causal=is_causal)
-        # topk: [batch, n_kv_head, seq_len, top_k]
-
-        # 3. Construct block-sparse causal mask
         t_q = torch.arange(seq_len, device=xq.device).view(1, 1, seq_len, 1)
         t_k = torch.arange(seq_len, device=xq.device).view(1, 1, 1, seq_len)
         b_q = t_q // self.block_size
         b_k = t_k // self.block_size
 
-        local_mask = (b_k == b_q)
         sink_mask = (b_k == 0)
 
-        # Build top-k selection indicator
-        topk_mask = torch.zeros((batch_size, self.n_kv_head, seq_len, num_blocks), dtype=torch.bool, device=xq.device)
-        topk_mask.scatter_(dim=-1, index=topk.clamp(0, num_blocks - 1), value=True)
-        topk_selected = topk_mask.gather(dim=-1, index=b_k.expand(batch_size, self.n_kv_head, seq_len, seq_len))
+        if self.mode == "forecast" and forecast_vector is not None:
+            # 1. Compress keys into block representations
+            xk_for_comp = xk.transpose(1, 2)  # [B, T, n_kv_head, head_dim]
+            block_reps = self.compressor(xk_for_comp)
 
-        allowed = local_mask | sink_mask | topk_selected
+            # 2. Select Top-K blocks using forecast vector
+            _, topk = self.selector(forecast_vector, block_reps, top_k=self.top_k_blocks, is_causal=is_causal)
+            # topk: [batch, n_kv_head, seq_len, top_k]
+
+            # 3. Construct block-sparse causal mask
+            local_mask = (b_k == b_q)
+            topk_mask = torch.zeros((batch_size, self.n_kv_head, seq_len, num_blocks), dtype=torch.bool, device=xq.device)
+            topk_mask.scatter_(dim=-1, index=topk.clamp(0, num_blocks - 1), value=True)
+            topk_selected = topk_mask.gather(dim=-1, index=b_k.expand(batch_size, self.n_kv_head, seq_len, seq_len))
+            allowed = local_mask | sink_mask | topk_selected
+        else:
+            # Static sliding-window + attention sink mask
+            sliding_window_mask = (b_k <= b_q) & (b_q - b_k < self.top_k_blocks + 1)
+            allowed = sliding_window_mask | sink_mask
         if is_causal:
             allowed = allowed & (t_k <= t_q)
 
@@ -286,14 +304,7 @@ class SparseAttention(BaseAttention):
 
             xq_slice = xq[:, :, start_q:end_q, :]
             
-            if forecast_vector is not None and b_q > 0:
-                fc_slice = forecast_vector[:, start_q:end_q, :, :]
-                _, topk = self.selector(fc_slice, block_reps, top_k=self.top_k_blocks, is_causal=True)
-                topk_indices = topk.view(batch_size, self.n_kv_head, -1)
-            else:
-                topk_indices = torch.zeros((batch_size, self.n_kv_head, 1), dtype=torch.long, device=xq.device)
-
-            # Local block + sink block + top-k
+            # Local block + sink block + (top-k if forecast else sliding window)
             max_sel = min(num_blocks, self.top_k_blocks + 2)
             selected_mask = torch.zeros((batch_size, self.n_kv_head, num_blocks), dtype=torch.bool, device=xq.device)
             sink_idx = torch.zeros((batch_size, self.n_kv_head, 1), dtype=torch.long, device=xq.device)
@@ -301,7 +312,17 @@ class SparseAttention(BaseAttention):
 
             selected_mask.scatter_(dim=-1, index=sink_idx, value=True)
             selected_mask.scatter_(dim=-1, index=curr_idx, value=True)
-            selected_mask.scatter_(dim=-1, index=topk_indices.clamp(0, num_blocks - 1), value=True)
+
+            if self.mode == "forecast" and forecast_vector is not None and b_q > 0:
+                fc_slice = forecast_vector[:, start_q:end_q, :, :]
+                _, topk = self.selector(fc_slice, block_reps, top_k=self.top_k_blocks, is_causal=True)
+                topk_indices = topk.view(batch_size, self.n_kv_head, -1)
+                selected_mask.scatter_(dim=-1, index=topk_indices.clamp(0, num_blocks - 1), value=True)
+            else:
+                local_start = max(0, b_q - self.top_k_blocks + 1)
+                for b in range(local_start, b_q + 1):
+                    idx = torch.full((batch_size, self.n_kv_head, 1), b, dtype=torch.long, device=xq.device)
+                    selected_mask.scatter_(dim=-1, index=idx, value=True)
 
             future_mask = torch.arange(num_blocks, device=xq.device) > b_q
             selected_mask[:, :, future_mask] = False

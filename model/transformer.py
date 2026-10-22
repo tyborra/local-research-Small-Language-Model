@@ -36,15 +36,17 @@ def build_attention_backend(config: ModelConfig, layer_idx: int) -> BaseAttentio
     backend = config.attention_backend.lower()
     if backend == "dense":
         return DenseAttention(config, layer_idx)
-    elif backend == "sparse":
-        return SparseAttention(config, layer_idx)
+    elif backend in ("static_sparse", "static"):
+        return SparseAttention(config, layer_idx, mode="static")
+    elif backend in ("sparse", "forecast", "sparse_forecast", "gpu_forecast"):
+        mode = getattr(config, "sparse_mode", "forecast" if backend != "static_sparse" else "static")
+        if backend in ("sparse",) and mode == "static":
+            return SparseAttention(config, layer_idx, mode="static")
+        return SparseAttention(config, layer_idx, mode="forecast")
     elif backend in ("offload", "forecast_offload"):
         return ForecastOffloadAttention(config, layer_idx)
     elif backend in ("async", "async_offload", "async_prefetch"):
         return AsyncForecastOffloadAttention(config, layer_idx)
-    elif backend in ("forecast",):
-        # Placeholders for future phases will be hooked here
-        return DenseAttention(config, layer_idx)
     else:
         raise ValueError(f"Unknown attention backend: {config.attention_backend}")
 

@@ -1,0 +1,47 @@
+# 32K Context Configuration for SparDA Local Research Model
+# Context Length: 32,768 tokens
+
+model:
+  vocab_size: 32000
+  n_layer: 12
+  n_embd: 768
+  n_head: 12
+  n_kv_head: 4
+  head_dim: 64
+  ffn_dim: 2048
+  forecast_heads: 4
+  forecast_dim: 64
+  context_length: 32768
+  rope_theta: 500000.0
+  norm_eps: 1.0e-6
+  tie_embeddings: true
+  initializer_range: 0.02
+  attention_backend: "dense"
+  block_size: 32
+  top_k_blocks: 64
+
+training:
+  batch_size: 1
+  gradient_accumulation_steps: 128
+  learning_rate: 1.5e-4
+  min_lr: 1.5e-5
+  weight_decay: 0.1
+  beta1: 0.9
+  beta2: 0.95
+  max_grad_norm: 1.0
+  warmup_steps: 100
+  max_steps: 1000
+  eval_interval: 100
+  eval_steps: 2
+  save_interval: 200
+  gradient_checkpointing: true
+  mixed_precision: "bf16"
+  device: "cuda"
+  seed: 42
+
+paths:
+  tokenizer_path: "data/tokenizer.json"
+  train_data_path: "data/train.bin"
+  val_data_path: "data/val.bin"
+  checkpoint_dir: "checkpoints/32k"
+  log_dir: "logs/32k"

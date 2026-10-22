@@ -11,6 +11,12 @@ from evaluation.forecast_metrics import (
     evaluate_forecast_metrics,
 )
 
+from evaluation.continual import (
+    compute_backward_transfer,
+    compute_forgetting,
+    ContinualEvaluator,
+)
+
 __all__ = [
     "compute_perplexity",
     "MemoryProfiler",
@@ -23,5 +29,9 @@ __all__ = [
     "compute_block_selection_accuracy",
     "compute_kl_divergence",
     "evaluate_forecast_metrics",
+    "compute_backward_transfer",
+    "compute_forgetting",
+    "ContinualEvaluator",
 ]
+
 

@@ -70,9 +70,9 @@ class OffloadedKVCache:
         start_idx = self.current_len
         end_idx = start_idx + seq_len
 
-        # Copy from GPU to CPU host memory
-        self.cpu_k[:, start_idx:end_idx] = xk.detach().to("cpu", non_blocking=True)
-        self.cpu_v[:, start_idx:end_idx] = xv.detach().to("cpu", non_blocking=True)
+        # Copy directly into pinned host CPU memory
+        self.cpu_k[:, start_idx:end_idx].copy_(xk.detach())
+        self.cpu_v[:, start_idx:end_idx].copy_(xv.detach())
         self.current_len = end_idx
         return self.current_len
 

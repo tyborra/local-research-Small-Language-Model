@@ -94,31 +94,29 @@ graph TD
 | **Phase 4** | **Sparse Attention Backend** | **COMPLETE** | `gather_kv_blocks`, `SparseAttention` (`model/attention/sparse.py`) with physical block gather, sink & local causal preservation, full model integration in `build_attention_backend`, 28/28 unit tests passing, comparative wall-clock benchmark (`benchmarks/sparse.py`) executed and logged to `docs/results.md`. |
 | **Phase 5** | **KV Offload** | **COMPLETE** | `OffloadedKVCache` in pinned CPU memory (`pin_memory`), `ForecastOffloadAttention` (`model/attention/offload.py`), 21.3x GPU KV VRAM reduction at 4K, 31/31 unit tests passing, PCIe transfer & latency breakdown benchmark (`benchmarks/offload.py`) logged to `docs/results.md`. |
 | **Phase 6** | **Async Prefetch** | **COMPLETE** | Dedicated CUDA transfer stream (`torch.cuda.Stream()`), `AsyncOffloadedKVCache`, `AsyncForecastOffloadAttention` (`model/attention/async_offload.py`), event synchronization (`torch.cuda.Event`), 3.96x–4.01x decode speedup over sync offload (42.77 ms vs 169.43 ms at 4K, 23.38 tok/s), 35/35 unit tests passing, empirical benchmark suite (`benchmarks/async_prefetch.py`) logged to `docs/async_benchmark.json` and `docs/results.md`. |
-| **Phase 7** | **Continual Learning** | **READY TO START** | Multi-stage dataset pipeline, dynamic replay buffer (5–20%), forgetting metrics & EWC regularization. |
-| **Phase 8** | **Full Scaling Matrix & Final Performance Run** | Planned | 5-way architecture matrix across 1K–32K context lengths; final benchmark sweep executed in **Performance Mode** (unconstrained TGP / boost clocks). |
+| **Phase 7** | **Continual Learning** | **COMPLETE** | Multi-stage dataset pipeline (`data/continual.py`), dynamic stratified experience replay (`training/replay.py`), Elastic Weight Consolidation with selective parameter protection (`training/ewc.py`), cross-stage perplexity & forgetting suite (`evaluation/continual.py`), CLI experiment runner (`scripts/train_continual.py`), 42/42 unit tests passing, empirical 5-strategy benchmark logged to `docs/continual/continual_report.md` and `docs/results.md`. |
+| **Phase 8** | **Full Scaling Matrix & Final Performance Run** | **READY TO START** | 5-way architecture matrix across 1K–32K context lengths; final comprehensive benchmark sweep executed in **Performance Mode** (unconstrained TGP / boost clocks). |
 
 ---
 
-## Next Milestone: Phase 7 Detailed Execution Guide
+## Next Milestone: Phase 8 Detailed Execution Guide
 
-**Goal**: Implement the **Continual Learning & Catastrophic Forgetting** experimental framework according to Section 14 of [SparDA-Style Local Research Model.md](SparDA-Style%20Local%20Research%20Model.md).
+**Goal**: Execute the comprehensive **Scaling Matrix & Final Performance Run** across context lengths (1K to 32K) comparing all 5 architecture paradigms on the 16 GB RTX-series GPU:
+1. **Dense GQA Baseline** (`dense`)
+2. **Forecast-Sparse GPU Attention** (`sparse` / `forecast`)
+3. **Synchronous Forecast KV Offload** (`offload`)
+4. **Asynchronous Prefetched KV Offload** (`async_offload`)
+5. **Continual Rehearsal Model** (`continual`)
 
-### Phase 7 Tasks:
-1. **Multi-Stage Dataset Pipeline (`data/continual.py`)**:
-   - Stage 1: General Python & Technical Documentation.
-   - Stage 2: Low-Level Systems Programming & CUDA C++ Kernels.
-   - Stage 3: Specialized Domain (Mathematical Reasoning / Algorithmic Code).
-2. **Dynamic Experience Replay Buffer (`training/replay.py`)**:
-   - Ring buffer or stratified reservoir sampling maintaining 5% to 20% rehearsal ratio.
-   - Batch mixing: $(1 - \alpha) \cdot \mathcal{D}_{\text{new}} + \alpha \cdot \mathcal{D}_{\text{replay}}$.
-3. **Catastrophic Forgetting Evaluation (`evaluation/continual.py`)**:
-   - Backward Transfer (BWT) and Retention metrics on earlier stages.
-   - Cross-stage perplexity logging on held-out validation sets for each stage.
-4. **Forecast Protection & Analysis**:
-   - Investigate retention of Forecast projection accuracy across training stages.
-   - Optional EWC (Elastic Weight Consolidation) parameter importance weighting.
-5. **Continual Learning Benchmark & CLI (`scripts/train_continual.py`)**:
-   - Execute staged training on the 16 GB RTX-series GPU and compare dense vs. forecast-sparse architecture retention.
+### Phase 8 Tasks:
+1. **Context Scaling Configurations (`configs/32k.yaml`)**:
+   - Verify configurations from 1K, 2K, 4K, 8K, 16K, up to 32K context length.
+2. **Unified Benchmark Suite (`benchmarks/scaling_matrix.py`)**:
+   - Profile Prefill Throughput (tok/s), Decode Latency (ms/tok), Decode Throughput (tok/s), GPU KV VRAM, Peak Allocated VRAM, and Headroom.
+   - Run in unconstrained GPU Performance Mode.
+3. **Comprehensive Performance Matrix Report (`docs/final_report.md`)**:
+   - Tabulate all metrics across all context lengths and attention backends.
+   - Document crossover points where Sparse / Offload / Async Prefetch outperform Dense.
 
 
 
