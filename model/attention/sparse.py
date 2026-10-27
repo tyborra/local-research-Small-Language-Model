@@ -264,7 +264,10 @@ class SparseAttention(BaseAttention):
         if self.num_queries_per_kv > 1:
             xk = torch.repeat_interleave(xk, repeats=self.num_queries_per_kv, dim=1)
             xv = torch.repeat_interleave(xv, repeats=self.num_queries_per_kv, dim=1)
-            attn_mask = torch.repeat_interleave(attn_mask, repeats=self.num_queries_per_kv, dim=1)
+            if attn_mask.size(1) == self.n_kv_head:
+                attn_mask = torch.repeat_interleave(attn_mask, repeats=self.num_queries_per_kv, dim=1)
+            elif attn_mask.size(1) == 1:
+                attn_mask = attn_mask.expand(-1, self.n_head, -1, -1)
 
         if return_attn_weights:
             scale = 1.0 / math.sqrt(self.head_dim)

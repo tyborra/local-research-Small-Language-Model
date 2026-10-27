@@ -31,10 +31,12 @@ class ModelConfig:
     # Attention backend selector
     # Options: "dense", "sparse", "forecast", "offload", "async_offload"
     attention_backend: str = "dense"
+    sparse_mode: str = "forecast"
     
     # Sparse / Block settings
     block_size: int = 32
     top_k_blocks: int = 4
+    num_queries_per_kv: int = 3
 
     def __post_init__(self):
         assert self.n_embd == self.n_head * self.head_dim, (

@@ -269,7 +269,7 @@ def profile_single_backend_context(
                 prof = getattr(layer.attention, "last_profile", None)
                 if prof and "overlap_pct" in prof:
                     layer_overlap_pcts.append(prof["overlap_pct"])
-                    layer_hidden_latencies.append(prof["transfer_hidden_ms"])
+                    layer_hidden_latencies.append(prof.get("latency_hidden_ms", prof.get("transfer_hidden_ms", 0.0)))
 
     decode_mean_ms = float(torch.tensor(decode_step_times_ms).mean().item())
     decode_tok_per_sec = 1000.0 / max(decode_mean_ms, 1e-6)
@@ -284,8 +284,8 @@ def profile_single_backend_context(
         # For standard GPU KV cache
         gpu_kv_tokens = ctx_len + num_decode_tokens
         gpu_kv_bytes = calculate_kv_cache_bytes(
-            n_layers=cfg.n_layer,
-            n_kv_heads=cfg.n_kv_head,
+            n_layer=cfg.n_layer,
+            n_kv_head=cfg.n_kv_head,
             head_dim=cfg.head_dim,
             batch_size=batch_size,
             seq_len=gpu_kv_tokens,
@@ -299,8 +299,8 @@ def profile_single_backend_context(
         )
         gpu_kv_tokens = max_sel_blocks * cfg.block_size
         gpu_kv_bytes = calculate_kv_cache_bytes(
-            n_layers=cfg.n_layer,
-            n_kv_heads=cfg.n_kv_head,
+            n_layer=cfg.n_layer,
+            n_kv_head=cfg.n_kv_head,
             head_dim=cfg.head_dim,
             batch_size=batch_size,
             seq_len=gpu_kv_tokens,

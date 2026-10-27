@@ -11,17 +11,21 @@ from model.config import ModelConfig
 def calculate_kv_cache_bytes(
     batch_size: int,
     seq_len: int,
-    n_layer: int,
-    n_kv_head: int,
-    head_dim: int,
+    n_layer: Optional[int] = None,
+    n_kv_head: Optional[int] = None,
+    head_dim: int = 64,
     dtype: torch.dtype = torch.bfloat16,
+    n_layers: Optional[int] = None,
+    n_kv_heads: Optional[int] = None,
 ) -> int:
     """Calculates theoretical analytical KV cache size in bytes.
     
     Formula: 2 (Key + Value) * batch_size * seq_len * n_kv_head * head_dim * bytes_per_elem * n_layer
     """
+    n_l = n_layer if n_layer is not None else (n_layers if n_layers is not None else 12)
+    n_kv_h = n_kv_head if n_kv_head is not None else (n_kv_heads if n_kv_heads is not None else 4)
     bytes_per_elem = 2 if dtype in (torch.bfloat16, torch.float16) else 4
-    return 2 * batch_size * seq_len * n_kv_head * head_dim * bytes_per_elem * n_layer
+    return 2 * batch_size * seq_len * n_kv_h * head_dim * bytes_per_elem * n_l
 
 
 class MemoryProfiler:

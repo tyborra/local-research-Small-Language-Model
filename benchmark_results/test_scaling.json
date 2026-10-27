@@ -1,0 +1,260 @@
+{
+  "timestamp": "2026-10-27 16:14:46",
+  "hardware": {
+    "device": "cuda",
+    "gpu_name": "NVIDIA GeForce RTX 4090 Laptop GPU",
+    "total_vram_gb": 15.99169921875,
+    "dtype": "torch.bfloat16"
+  },
+  "parameters": {
+    "batch_size": 1,
+    "num_decode_tokens": 4,
+    "context_lengths": [
+      1024
+    ],
+    "backends": [
+      "dense",
+      "static_sparse",
+      "forecast",
+      "offload",
+      "async_offload"
+    ]
+  },
+  "matrix_results": {
+    "dense": [
+      {
+        "backend": "dense",
+        "backend_name": "Dense GQA Baseline",
+        "context_length": 1024,
+        "batch_size": 1,
+        "prefill_mean_ms": 78.22898864746094,
+        "prefill_tok_per_sec": 13089.776791243687,
+        "decode_mean_ms_per_token": 85.76084899902344,
+        "decode_tok_per_sec": 11.66033232729992,
+        "gpu_kv_mb": 12.046875,
+        "peak_vram_gb": 0.7423124313354492,
+        "headroom_vram_gb": 15.24938678741455,
+        "transfer_kb_per_step": 0.0,
+        "total_transferred_mb": 0.0,
+        "overlap_mean_pct": 0.0,
+        "hidden_mean_ms": 0.0
+      }
+    ],
+    "static_sparse": [
+      {
+        "backend": "static_sparse",
+        "backend_name": "Static Local + Sink Sparse",
+        "context_length": 1024,
+        "batch_size": 1,
+        "prefill_mean_ms": 95.446533203125,
+        "prefill_tok_per_sec": 10728.519576722283,
+        "decode_mean_ms_per_token": 124.4970703125,
+        "decode_tok_per_sec": 8.03231752755226,
+        "gpu_kv_mb": 12.046875,
+        "peak_vram_gb": 0.7432889938354492,
+        "headroom_vram_gb": 15.24841022491455,
+        "transfer_kb_per_step": 0.0,
+        "total_transferred_mb": 0.0,
+        "overlap_mean_pct": 0.0,
+        "hidden_mean_ms": 0.0
+      }
+    ],
+    "forecast": [
+      {
+        "backend": "forecast",
+        "backend_name": "Forecast-Guided GPU Sparse",
+        "context_length": 1024,
+        "batch_size": 1,
+        "prefill_mean_ms": 106.41458892822266,
+        "prefill_tok_per_sec": 9622.740738026952,
+        "decode_mean_ms_per_token": 133.04652404785156,
+        "decode_tok_per_sec": 7.516167800372895,
+        "gpu_kv_mb": 12.046875,
+        "peak_vram_gb": 0.7432889938354492,
+        "headroom_vram_gb": 15.24841022491455,
+        "transfer_kb_per_step": 0.0,
+        "total_transferred_mb": 0.0,
+        "overlap_mean_pct": 0.0,
+        "hidden_mean_ms": 0.0
+      }
+    ],
+    "offload": [
+      {
+        "backend": "offload",
+        "backend_name": "Synchronous Forecast Offload",
+        "context_length": 1024,
+        "batch_size": 1,
+        "prefill_mean_ms": 71.36665344238281,
+        "prefill_tok_per_sec": 14348.437969376224,
+        "decode_mean_ms_per_token": 185.76715087890625,
+        "decode_tok_per_sec": 5.383083043846959,
+        "gpu_kv_mb": 2.25,
+        "peak_vram_gb": 0.7311582565307617,
+        "headroom_vram_gb": 15.260540962219238,
+        "transfer_kb_per_step": 2112.0,
+        "total_transferred_mb": 8.25,
+        "overlap_mean_pct": 0.0,
+        "hidden_mean_ms": 0.0
+      }
+    ],
+    "async_offload": [
+      {
+        "backend": "async_offload",
+        "backend_name": "Asynchronous Prefetched Offload",
+        "context_length": 1024,
+        "batch_size": 1,
+        "prefill_mean_ms": 88.04147338867188,
+        "prefill_tok_per_sec": 11630.882135279622,
+        "decode_mean_ms_per_token": 217.0847930908203,
+        "decode_tok_per_sec": 4.606494935744471,
+        "gpu_kv_mb": 2.25,
+        "peak_vram_gb": 0.7311582565307617,
+        "headroom_vram_gb": 15.260540962219238,
+        "transfer_kb_per_step": 2112.0,
+        "total_transferred_mb": 8.25,
+        "overlap_mean_pct": 0.0,
+        "hidden_mean_ms": 0.0
+      }
+    ]
+  },
+  "comparative_matrix": [
+    {
+      "backend": "dense",
+      "backend_name": "Dense GQA Baseline",
+      "context_length": 1024,
+      "batch_size": 1,
+      "prefill_mean_ms": 78.22898864746094,
+      "prefill_tok_per_sec": 13089.776791243687,
+      "decode_mean_ms_per_token": 85.76084899902344,
+      "decode_tok_per_sec": 11.66033232729992,
+      "gpu_kv_mb": 12.046875,
+      "peak_vram_gb": 0.7423124313354492,
+      "headroom_vram_gb": 15.24938678741455,
+      "transfer_kb_per_step": 0.0,
+      "total_transferred_mb": 0.0,
+      "overlap_mean_pct": 0.0,
+      "hidden_mean_ms": 0.0,
+      "prefill_speedup_vs_dense": 1.0,
+      "decode_speedup_vs_dense": 1.0,
+      "kv_reduction_vs_dense": 1.0
+    },
+    {
+      "backend": "static_sparse",
+      "backend_name": "Static Local + Sink Sparse",
+      "context_length": 1024,
+      "batch_size": 1,
+      "prefill_mean_ms": 95.446533203125,
+      "prefill_tok_per_sec": 10728.519576722283,
+      "decode_mean_ms_per_token": 124.4970703125,
+      "decode_tok_per_sec": 8.03231752755226,
+      "gpu_kv_mb": 12.046875,
+      "peak_vram_gb": 0.7432889938354492,
+      "headroom_vram_gb": 15.24841022491455,
+      "transfer_kb_per_step": 0.0,
+      "total_transferred_mb": 0.0,
+      "overlap_mean_pct": 0.0,
+      "hidden_mean_ms": 0.0,
+      "prefill_speedup_vs_dense": 0.8196105821987011,
+      "decode_speedup_vs_dense": 0.6888583705926188,
+      "kv_reduction_vs_dense": 1.0
+    },
+    {
+      "backend": "forecast",
+      "backend_name": "Forecast-Guided GPU Sparse",
+      "context_length": 1024,
+      "batch_size": 1,
+      "prefill_mean_ms": 106.41458892822266,
+      "prefill_tok_per_sec": 9622.740738026952,
+      "decode_mean_ms_per_token": 133.04652404785156,
+      "decode_tok_per_sec": 7.516167800372895,
+      "gpu_kv_mb": 12.046875,
+      "peak_vram_gb": 0.7432889938354492,
+      "headroom_vram_gb": 15.24841022491455,
+      "transfer_kb_per_step": 0.0,
+      "total_transferred_mb": 0.0,
+      "overlap_mean_pct": 0.0,
+      "hidden_mean_ms": 0.0,
+      "prefill_speedup_vs_dense": 0.735134058547432,
+      "decode_speedup_vs_dense": 0.644592931779102,
+      "kv_reduction_vs_dense": 1.0
+    },
+    {
+      "backend": "offload",
+      "backend_name": "Synchronous Forecast Offload",
+      "context_length": 1024,
+      "batch_size": 1,
+      "prefill_mean_ms": 71.36665344238281,
+      "prefill_tok_per_sec": 14348.437969376224,
+      "decode_mean_ms_per_token": 185.76715087890625,
+      "decode_tok_per_sec": 5.383083043846959,
+      "gpu_kv_mb": 2.25,
+      "peak_vram_gb": 0.7311582565307617,
+      "headroom_vram_gb": 15.260540962219238,
+      "transfer_kb_per_step": 2112.0,
+      "total_transferred_mb": 8.25,
+      "overlap_mean_pct": 0.0,
+      "hidden_mean_ms": 0.0,
+      "prefill_speedup_vs_dense": 1.0961560459132131,
+      "decode_speedup_vs_dense": 0.46165777207256253,
+      "kv_reduction_vs_dense": 5.354166666666667
+    },
+    {
+      "backend": "async_offload",
+      "backend_name": "Asynchronous Prefetched Offload",
+      "context_length": 1024,
+      "batch_size": 1,
+      "prefill_mean_ms": 88.04147338867188,
+      "prefill_tok_per_sec": 11630.882135279622,
+      "decode_mean_ms_per_token": 217.0847930908203,
+      "decode_tok_per_sec": 4.606494935744471,
+      "gpu_kv_mb": 2.25,
+      "peak_vram_gb": 0.7311582565307617,
+      "headroom_vram_gb": 15.260540962219238,
+      "transfer_kb_per_step": 2112.0,
+      "total_transferred_mb": 8.25,
+      "overlap_mean_pct": 0.0,
+      "hidden_mean_ms": 0.0,
+      "prefill_speedup_vs_dense": 0.8885470180866658,
+      "decode_speedup_vs_dense": 0.3950569165991477,
+      "kv_reduction_vs_dense": 5.354166666666667
+    }
+  ],
+  "crossover_summary": {
+    "static_sparse": {
+      "prefill_speedup_crossover_tokens": null,
+      "decode_speedup_crossover_tokens": null,
+      "kv_50pct_reduction_crossover_tokens": null,
+      "kv_90pct_reduction_crossover_tokens": null,
+      "max_kv_reduction_ratio": 1.0,
+      "peak_prefill_tok_per_sec": 10728.519576722283,
+      "peak_decode_tok_per_sec": 8.03231752755226
+    },
+    "forecast": {
+      "prefill_speedup_crossover_tokens": null,
+      "decode_speedup_crossover_tokens": null,
+      "kv_50pct_reduction_crossover_tokens": null,
+      "kv_90pct_reduction_crossover_tokens": null,
+      "max_kv_reduction_ratio": 1.0,
+      "peak_prefill_tok_per_sec": 9622.740738026952,
+      "peak_decode_tok_per_sec": 7.516167800372895
+    },
+    "offload": {
+      "prefill_speedup_crossover_tokens": 1024,
+      "decode_speedup_crossover_tokens": null,
+      "kv_50pct_reduction_crossover_tokens": 1024,
+      "kv_90pct_reduction_crossover_tokens": null,
+      "max_kv_reduction_ratio": 5.354166666666667,
+      "peak_prefill_tok_per_sec": 14348.437969376224,
+      "peak_decode_tok_per_sec": 5.383083043846959
+    },
+    "async_offload": {
+      "prefill_speedup_crossover_tokens": null,
+      "decode_speedup_crossover_tokens": null,
+      "kv_50pct_reduction_crossover_tokens": 1024,
+      "kv_90pct_reduction_crossover_tokens": null,
+      "max_kv_reduction_ratio": 5.354166666666667,
+      "peak_prefill_tok_per_sec": 11630.882135279622,
+      "peak_decode_tok_per_sec": 4.606494935744471
+    }
+  }
+}
