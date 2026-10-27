@@ -318,7 +318,7 @@ class SparseAttention(BaseAttention):
 
             if self.mode == "forecast" and forecast_vector is not None and b_q > 0:
                 fc_slice = forecast_vector[:, start_q:end_q, :, :]
-                _, topk = self.selector(fc_slice, block_reps, top_k=self.top_k_blocks, is_causal=True)
+                _, topk = self.selector(fc_slice, block_reps, top_k=self.top_k_blocks, is_causal=False)
                 topk_indices = topk.view(batch_size, self.n_kv_head, -1)
                 selected_mask.scatter_(dim=-1, index=topk_indices.clamp(0, num_blocks - 1), value=True)
             else:
@@ -417,7 +417,7 @@ class SparseAttention(BaseAttention):
         xk = xk.transpose(1, 2)
         xv = xv.transpose(1, 2)
 
-        use_chunked_gather = kwargs.get("use_chunked_gather", False)
+        use_chunked_gather = kwargs.get("use_chunked_gather", seq_len > 8192)
         if use_chunked_gather:
             return self._forward_chunked_gather(
                 xq=xq,
